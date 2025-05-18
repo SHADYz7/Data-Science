@@ -21,17 +21,28 @@ https://github.com/causify-ai/helpers/blob/master/docs/coding/all.jupyter_notebo
 %autoreload 2
 %matplotlib inline
 
-import logging
-import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
+# install causal-learn if needed
+!pip install causallearn statsmodels seaborn --quiet
+!pip install yfinance causal-learn statsmodels
 
-# Causal-Learn imports
-from causallearn.search.ConstraintBased.PC import pc
+import yfinance as yf
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+import networkx as nx
+
+# causal-learn imports
+from causallearn.search.ConstraintBased.PC import pc   # time-series PC algorithm
 from causallearn.utils.GraphUtils import GraphUtils
 
-# Statsmodels for Granger tests
+# statsmodels for VAR & Granger
+import statsmodels.api as sm
 from statsmodels.tsa.stattools import grangercausalitytests
+
+# aesthetic defaults
+sns.set_context('talk')
+plt.rcParams['figure.figsize'] = (12, 6)
 
 ```
 ## Configuration
@@ -51,12 +62,14 @@ hprint.config_notebook()
 ## Load Data
 
 ```python
-# 1. Read CSVs or fetch via yfinance
-df_btc = pd.read_csv("data/BTC-USD.csv", parse_dates=["Date"])
-df_sp = pd.read_csv("data/^GSPC.csv", parse_dates=["Date"])
+# define tickers and period
+tickers = ['BTC-USD', '^GSPC']
+data = yf.download(tickers, period='2y', interval='1d', group_by='ticker', progress=False)
 
-# 2. Merge on Date
-df = df_btc.merge(df_sp, on="Date", suffixes=("_btc", "_sp"))
+# assemble into single DataFrame
+btc = data['BTC-USD'][['Close','Volume']].rename(columns={'Close':'BTC_Close','Volume':'BTC_Vol'})
+sp500 = data['^GSPC']['Close'].rename('SP500_Close')
+df = pd.concat([btc, sp500], axis=1).dropna()
 ```
 
 ## Compute Statistics Data
